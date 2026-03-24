@@ -1,5 +1,7 @@
 #include <sqlite3.h>
 #include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 
 #define BASE_URL "https://zigistry.dev/"
 
@@ -35,10 +37,27 @@ typedef struct {
 
 // the maximum needed limit is 50,000 urls for a sitemap.
 hashmap hm[50000];
+  unsigned int url_count = 0;
 
-int process_each_row(void *data, int argc, char **argv, char **column_names) {
-    printf("Repo ID: %s\n", argv[0]);
-    return 0;
+   char resulting_string[500];
+int process_each_row_packages_on_gh(void *data, int argc, char **argv, char **column_names) {
+    // the id starts with cb/ or gh/
+    // I will be removing cb/ with codeberg/ and gh/ with github/
+    // "packages/github/"
+    size_t final_string_size = snprintf(NULL, 0,
+        BASE_URL "packages/github/%s",
+        argv[0]+3
+    ) + 1;
+
+    char *resulting_string = malloc(final_string_size);
+
+    snprintf(resulting_string, final_string_size,
+        BASE_URL "packages/github/%s",
+        argv[0]+3
+    );
+
+    hm[url_count++] = (hashmap){resulting_string, 0.8f};
+        return 0;
 }
 
 int main() {
@@ -54,16 +73,15 @@ int main() {
     printf("Database loaded");
   }
 
-  unsigned int url_count = 0;
 
-  hm[url_count++] = (hashmap){BASE_URL, 1.0f};
-  hm[url_count++] = (hashmap){BASE_URL "programs", 0.95f};
-  hm[url_count++] = (hashmap){BASE_URL "graph", 0.95f};
-  hm[url_count++] = (hashmap){BASE_URL "about", 0.90f};
-  hm[url_count++] = (hashmap){BASE_URL "help", 0.90f};
+  hm[url_count++] = (hashmap){"", 1.0f}; // Added for / route
+  hm[url_count++] = (hashmap){"programs", 0.95f};
+  hm[url_count++] = (hashmap){"graph", 0.95f};
+  hm[url_count++] = (hashmap){"about", 0.90f};
+  hm[url_count++] = (hashmap){"help", 0.90f};
   char *error_message = NULL;
 
-  int code = sqlite3_exec(db_ptr, QUERY_ALL_PACKAGES_ON_GITHUB, process_each_row, 0, &error_message);
+  int code = sqlite3_exec(db_ptr, QUERY_ALL_PACKAGES_ON_GITHUB, process_each_row_packages_on_gh, 0, &error_message);
   if (code != SQLITE_OK) {
       printf("sql error: %s\n", error_message);
       sqlite3_free(error_message);
@@ -72,6 +90,10 @@ int main() {
   if(error_message) {
       printf("%s", error_message);
       return 1;
+  }
+
+  for(int i = 0; i < url_count; i++) {
+      printf("%s: %.2f\n", hm[i].key, hm[i].value);
   }
   
   return 0;
