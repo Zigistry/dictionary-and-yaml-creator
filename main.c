@@ -2,6 +2,18 @@
 #include <stdio.h>
 
 
+const char *  ALL_PACKAGES_ON_GITHUB=
+"SELECT repos.* FROM repos JOIN packages ON repos.id = packages.repo_id WHERE repos.platform = 'GITHUB';";
+
+const char * ALL_PACKAGES_ON_CODEBERG=
+"SELECT repos.* FROM repos JOIN packages ON repos.id = packages.repo_id WHERE repos.platform = 'CODEBERG';";
+
+const char * ALL_PROGRAMS_ON_GITHUB=
+"SELECT repos.* FROM repos JOIN programs ON repos.id = programs.repo_id WHERE repos.platform = 'GITHUB';";
+
+const char * ALL_PROGRAMS_ON_CODEBERG=
+"SELECT repos.* FROM repos JOIN programs ON repos.id = programs.repo_id WHERE repos.platform = 'CODEBERG';";
+  
 int main() {
   sqlite3 *db_ptr = NULL;
 
@@ -11,6 +23,8 @@ int main() {
   } else {
     printf("Database loaded");
   }
+
+  
 
   return 0;
 }
