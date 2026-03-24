@@ -1,7 +1,7 @@
 #include <sqlite3.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define BASE_URL "https://zigistry.dev/"
 
@@ -29,35 +29,32 @@ const char *QUERY_ALL_PROGRAMS_ON_CODEBERG =
     "SELECT repos.id FROM repos JOIN programs ON repos.id = programs.repo_id "
     "WHERE repos.platform = 'codeberg';";
 
-
 typedef struct {
-    const char *key;
-    float value;
+  const char *key;
+  float value;
 } hashmap;
 
 // the maximum needed limit is 50,000 urls for a sitemap.
 hashmap hm[50000];
-  unsigned int url_count = 0;
+unsigned int url_count = 0;
 
-   char resulting_string[500];
-int process_each_row_packages_on_gh(void *data, int argc, char **argv, char **column_names) {
-    // the id starts with cb/ or gh/
-    // I will be removing cb/ with codeberg/ and gh/ with github/
-    // "packages/github/"
-    size_t final_string_size = snprintf(NULL, 0,
-        BASE_URL "packages/github/%s",
-        argv[0]+3
-    ) + 1;
+char resulting_string[500];
+int process_each_row_packages_on_gh(void *data, int argc, char **argv,
+                                    char **column_names) {
+  const char *route_starting_part = (const char *)data;
+  // the id starts with cb/ or gh/
+  // I will be removing cb/ with codeberg/ and gh/ with github/
+  // "packages/github/"
+  size_t final_string_size =
+      snprintf(NULL, 0, BASE_URL "%s%s", route_starting_part, argv[0] + 3) + 1;
 
-    char *resulting_string = malloc(final_string_size);
+  char *resulting_string = malloc(final_string_size);
 
-    snprintf(resulting_string, final_string_size,
-        BASE_URL "packages/github/%s",
-        argv[0]+3
-    );
+  snprintf(resulting_string, final_string_size, BASE_URL "%s%s",
+           route_starting_part, argv[0] + 3);
 
-    hm[url_count++] = (hashmap){resulting_string, 0.8f};
-        return 0;
+  hm[url_count++] = (hashmap){resulting_string, 0.8f};
+  return 0;
 }
 
 int main() {
@@ -73,7 +70,6 @@ int main() {
     printf("Database loaded");
   }
 
-
   hm[url_count++] = (hashmap){"", 1.0f}; // Added for / route
   hm[url_count++] = (hashmap){"programs", 0.95f};
   hm[url_count++] = (hashmap){"graph", 0.95f};
@@ -81,20 +77,42 @@ int main() {
   hm[url_count++] = (hashmap){"help", 0.90f};
   char *error_message = NULL;
 
-  int code = sqlite3_exec(db_ptr, QUERY_ALL_PACKAGES_ON_GITHUB, process_each_row_packages_on_gh, 0, &error_message);
+  int code = sqlite3_exec(db_ptr, QUERY_ALL_PACKAGES_ON_GITHUB,
+                          process_each_row_packages_on_gh,
+                          (void *)"packages/github/", &error_message);
   if (code != SQLITE_OK) {
-      printf("sql error: %s\n", error_message);
-      sqlite3_free(error_message);
-      return 1;
+    printf("sql error: %s\n", error_message);
+    sqlite3_free(error_message);
+    return 1;
   }
-  if(error_message) {
-      printf("%s", error_message);
-      return 1;
+  code = sqlite3_exec(db_ptr, QUERY_ALL_PACKAGES_ON_CODEBERG,
+                          process_each_row_packages_on_gh,
+                          (void *)"packages/codeberg/", &error_message);
+  if (code != SQLITE_OK) {
+    printf("sql error: %s\n", error_message);
+    sqlite3_free(error_message);
+    return 1;
   }
-
-  for(int i = 0; i < url_count; i++) {
-      printf("%s: %.2f\n", hm[i].key, hm[i].value);
+  code = sqlite3_exec(db_ptr, QUERY_ALL_PROGRAMS_ON_GITHUB,
+                          process_each_row_packages_on_gh,
+                          (void *)"programs/github/", &error_message);
+  if (code != SQLITE_OK) {
+    printf("sql error: %s\n", error_message);
+    sqlite3_free(error_message);
+    return 1;
+  }
+  code = sqlite3_exec(db_ptr, QUERY_ALL_PROGRAMS_ON_CODEBERG,
+                          process_each_row_packages_on_gh,
+                          (void *)"programs/codeberg/", &error_message);
+  if (code != SQLITE_OK) {
+    printf("sql error: %s\n", error_message);
+    sqlite3_free(error_message);
+    return 1;
   }
   
+  for (int i = 0; i < url_count; i++) {
+    printf("%s: %.2f\n", hm[i].key, hm[i].value);
+  }
+
   return 0;
 }
