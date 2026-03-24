@@ -115,12 +115,19 @@ int main() {
             "<url>\n"
             "<loc>https://zigistry.dev/%s</loc>\n"
             "<priority>%.2f</priority>\n"
+            "<changefreq>daily</changefreq>\n"
             "</url>\n",
             hm[i].key, hm[i].value
     );
   }
 
   fprintf(sitemap_fp, "</urlset>\n");
+
+  fclose(sitemap_fp);
+
+  for(int i = 0; i < url_count; i++) {
+    free((void *)hm[url_count].key);
+  }
 
   return 0;
 }
