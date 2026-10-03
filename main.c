@@ -13,20 +13,20 @@ const char *XML_HEADER =
     "            http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd'>\n";
 
 const char *QUERY_ALL_PACKAGES_ON_GITHUB =
-    "SELECT repos.id FROM repos JOIN packages ON repos.id = packages.repo_id "
-    "WHERE repos.platform = 'github';";
+    "SELECT repos.id FROM repos "
+    "WHERE repos.is_package = 1 AND repos.platform_id = 'gh';";
 
 const char *QUERY_ALL_PACKAGES_ON_CODEBERG =
-    "SELECT repos.id FROM repos JOIN packages ON repos.id = packages.repo_id "
-    "WHERE repos.platform = 'codeberg';";
+    "SELECT repos.id FROM repos "
+    "WHERE repos.is_package = 1 AND repos.platform_id = 'cb';";
 
 const char *QUERY_ALL_PROGRAMS_ON_GITHUB =
-    "SELECT repos.id FROM repos JOIN programs ON repos.id = programs.repo_id "
-    "WHERE repos.platform = 'github';";
+    "SELECT repos.id FROM repos "
+    "WHERE repos.is_program = 1 AND repos.platform_id = 'gh';";
 
 const char *QUERY_ALL_PROGRAMS_ON_CODEBERG =
-    "SELECT repos.id FROM repos JOIN programs ON repos.id = programs.repo_id "
-    "WHERE repos.platform = 'codeberg';";
+    "SELECT repos.id FROM repos "
+    "WHERE repos.is_program = 1 AND repos.platform_id = 'cb';";
 
 typedef struct {
   const char *key;
@@ -37,9 +37,15 @@ typedef struct {
 hashmap hm[50000];
 unsigned int url_count = 0;
 
-char resulting_string[500];
 int process_each_row_packages_on_gh(void *data, int argc, char **argv,
                                     char **column_names) {
+  (void)column_names;
+  if (argc == 0 || argv[0] == NULL || strlen(argv[0]) < 3) {
+    return 0;
+  }
+  if (url_count >= 50000) {
+    return 0;
+  }
   const char *route_starting_part = (const char *)data;
   // the id starts with cb/ or gh/
   // I will be removing cb/ with codeberg/ and gh/ with github/
@@ -48,6 +54,9 @@ int process_each_row_packages_on_gh(void *data, int argc, char **argv,
       snprintf(NULL, 0, "%s%s", route_starting_part, argv[0] + 3) + 1;
 
   char *resulting_string = malloc(final_string_size);
+  if (!resulting_string) {
+    return 0;
+  }
 
   snprintf(resulting_string, final_string_size, "%s%s",
            route_starting_part, argv[0] + 3);
@@ -106,6 +115,8 @@ int main() {
     return 1;
   }
 
+  sqlite3_close(db_ptr);
+
   FILE *sitemap_fp = fopen("sitemap.xml", "w");
 
   fprintf(sitemap_fp, "%s", XML_HEADER);
@@ -125,8 +136,8 @@ int main() {
 
   fclose(sitemap_fp);
 
-  for(int i = 0; i < url_count; i++) {
-    free((void *)hm[url_count].key);
+  for (unsigned int i = 5; i < url_count; i++) {
+    free((void *)hm[i].key);
   }
 
   return 0;
